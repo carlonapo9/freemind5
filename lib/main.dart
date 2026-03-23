@@ -4,8 +4,12 @@ import 'screens/schedule_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
   await Hive.initFlutter();
+
+  // ⭐ REQUIRED BOXES
   await Hive.openBox('users');
+  await Hive.openBox('schedule'); // <-- THIS WAS MISSING
 
   runApp(const FreeMindApp());
 }

@@ -15,11 +15,13 @@ class ScheduleScreen extends StatefulWidget {
 
 class _ScheduleScreenState extends State<ScheduleScreen> {
   late Box usersBox;
+  late Box scheduleBox;
 
   @override
   void initState() {
     super.initState();
     usersBox = Hive.box('users');
+    scheduleBox = Hive.box('schedule');
 
     if (usersBox.isEmpty) {
       usersBox.put('main', {"name": "Me", "avatar": Icons.person.codePoint});
@@ -52,7 +54,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       );
     }
 
-    // ⭐ Multi-user cluster
     final maxToShow = 3;
     final visible = users.take(maxToShow).toList();
     final extra = users.length - maxToShow;
@@ -73,7 +74,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 ),
               ),
             ),
-
           if (extra > 0)
             Positioned(
               right: maxToShow * 20,
@@ -124,14 +124,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
                   return GestureDetector(
                     behavior: HitTestBehavior.opaque,
-
-                    //  TAP ON NAME → SINGLE SELECT + CLOSE POPUP
                     onTap: () {
                       usersBox.put('selectedUserKeys', [key]);
                       Navigator.pop(context);
                       setState(() {});
                     },
-
                     child: ListTile(
                       leading: CircleAvatar(
                         child: Icon(
@@ -139,10 +136,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                           size: 20,
                         ),
                       ),
-
                       title: Text(user["name"]),
-
-                      // ⭐ DOT ON THE RIGHT SIDE
                       trailing: GestureDetector(
                         onTap: () {
                           if (isSelected) {
@@ -151,7 +145,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                             selectedKeys.add(key);
                           }
 
-                          // ⭐ Never allow empty selection
                           if (selectedKeys.isEmpty) {
                             selectedKeys.add('main');
                           }
@@ -182,6 +175,53 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     );
   }
 
+  // ⭐ EVENT CARD
+  Widget buildEventCard(Map event) {
+    final image = event["image"];
+    final title = event["title"];
+    final date = event["date"];
+    final time = event["time"];
+    final venue = event["venue"];
+    final city = event["city"];
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (image != null)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(
+                  image,
+                  height: 160,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                ),
+              ),
+
+            const SizedBox(height: 10),
+
+            Text(
+              title,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+
+            const SizedBox(height: 6),
+
+            Text("$date  $time"),
+
+            const SizedBox(height: 6),
+
+            Text("$venue — $city", style: const TextStyle(color: Colors.grey)),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final selectedKeys = List<String>.from(usersBox.get('selectedUserKeys'));
@@ -197,7 +237,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             );
           },
         ),
-
         actions: [
           IconButton(
             icon: const Icon(Icons.edit),
@@ -208,7 +247,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               ).then((_) => setState(() {}));
             },
           ),
-
           GestureDetector(
             onTap: _openUserSelector,
             child: Padding(
@@ -227,7 +265,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               decoration: const BoxDecoration(color: AppColors.primary),
               child: Text('Menu', style: AppText.drawerHeader),
             ),
-
             ListTile(
               leading: const Icon(Icons.person_add),
               title: const Text('Add User'),
@@ -239,7 +276,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 ).then((_) => setState(() {}));
               },
             ),
-
             ListTile(
               leading: const Icon(Icons.event),
               title: const Text('Live Events'),
@@ -255,11 +291,31 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         ),
       ),
 
-      body: const Center(
-        child: Text(
-          'Your events will appear here',
-          style: TextStyle(fontSize: 18),
-        ),
+      // ⭐ REAL EVENT LIST
+      body: ValueListenableBuilder(
+        valueListenable: scheduleBox.listenable(),
+        builder: (context, box, _) {
+          final allEvents = box.values.toList();
+
+          // Filter by selected users
+          final filtered = allEvents.where((event) {
+            final users = List<String>.from(event["users"]);
+            return users.any((u) => selectedKeys.contains(u));
+          }).toList();
+
+          if (filtered.isEmpty) {
+            return const Center(
+              child: Text("No events yet", style: TextStyle(fontSize: 18)),
+            );
+          }
+
+          return ListView.builder(
+            itemCount: filtered.length,
+            itemBuilder: (context, index) {
+              return buildEventCard(filtered[index]);
+            },
+          );
+        },
       ),
     );
   }
