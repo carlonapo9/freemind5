@@ -33,6 +33,13 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     }
   }
 
+  // ⭐ Parse event date for sorting
+  DateTime parseEventDate(Map event) {
+    final date = event["date"] ?? "";
+    final time = event["time"] ?? "00:00";
+    return DateTime.tryParse("$date $time") ?? DateTime(2100);
+  }
+
   // ⭐ AVATAR CLUSTER FOR APPBAR
   Widget buildAvatarCluster(List<String> selectedKeys) {
     final users = selectedKeys.map((k) => usersBox.get(k)).toList();
@@ -175,7 +182,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     );
   }
 
-  // ⭐ EVENT CARD
+  // ⭐ EVENT CARD — small image + attendees
   Widget buildEventCard(Map event) {
     final image = event["image"];
     final title = event["title"];
@@ -183,39 +190,75 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     final time = event["time"];
     final venue = event["venue"];
     final city = event["city"];
+    final users = List<String>.from(event["users"]);
+
+    // Convert user keys → names
+    final attendeeNames = users
+        .map((key) {
+          final u = usersBox.get(key);
+          return u != null ? u["name"] : "";
+        })
+        .join(", ");
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Padding(
         padding: const EdgeInsets.all(12),
-        child: Column(
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ⭐ SMALL IMAGE
             if (image != null)
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: Image.network(
                   image,
-                  height: 160,
-                  width: double.infinity,
+                  height: 70,
+                  width: 70,
                   fit: BoxFit.cover,
                 ),
               ),
 
-            const SizedBox(height: 10),
+            const SizedBox(width: 12),
 
-            Text(
-              title,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            // ⭐ TEXT DETAILS
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+
+                  const SizedBox(height: 4),
+
+                  Text("$date  $time", style: const TextStyle(fontSize: 14)),
+
+                  const SizedBox(height: 4),
+
+                  Text(
+                    "$venue — $city",
+                    style: const TextStyle(fontSize: 14, color: Colors.grey),
+                  ),
+
+                  const SizedBox(height: 6),
+
+                  // ⭐ ATTENDEES
+                  Text(
+                    "Attending: $attendeeNames",
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Colors.teal,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
             ),
-
-            const SizedBox(height: 6),
-
-            Text("$date  $time"),
-
-            const SizedBox(height: 6),
-
-            Text("$venue — $city", style: const TextStyle(color: Colors.grey)),
           ],
         ),
       ),
@@ -291,7 +334,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         ),
       ),
 
-      // ⭐ REAL EVENT LIST
+      // ⭐ SORTED, FILTERED EVENT LIST
       body: ValueListenableBuilder(
         valueListenable: scheduleBox.listenable(),
         builder: (context, box, _) {
@@ -302,6 +345,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             final users = List<String>.from(event["users"]);
             return users.any((u) => selectedKeys.contains(u));
           }).toList();
+
+          // ⭐ SORT BY DATE
+          filtered.sort(
+            (a, b) => parseEventDate(a).compareTo(parseEventDate(b)),
+          );
 
           if (filtered.isEmpty) {
             return const Center(

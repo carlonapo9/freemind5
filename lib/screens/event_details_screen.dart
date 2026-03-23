@@ -22,17 +22,13 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
     scheduleBox = Hive.box('schedule');
   }
 
-  // ⭐ FIXED: Ticketmaster public URL
+  // ⭐ Correct Ticketmaster URL
   String? getTicketUrl() {
-    return widget.event["url"]; // <-- Correct field
+    return widget.event["url"];
   }
 
-  // ⭐ Add event to schedule
-  void addToSchedule() {
-    final selectedKeys = List<String>.from(
-      usersBox.get('selectedUserKeys', defaultValue: ['main']),
-    );
-
+  // ⭐ SAVE EVENT AFTER USER SELECTION
+  void saveEvent(List<String> selectedKeys) {
     final event = widget.event;
 
     final name = event["name"] ?? "Untitled Event";
@@ -56,13 +52,14 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
 
     scheduleBox.add(eventData);
 
+    Navigator.pop(context); // close popup
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text("Event added to your schedule")),
     );
   }
 
-  // ⭐ User selector popup
-  void openUserSelector() {
+  // ⭐ MANDATORY USER SELECTION POPUP
+  void openMandatoryUserSelector() {
     final keys = usersBox.keys.where((k) => k != 'selectedUserKeys').toList();
     List<String> selectedKeys = List<String>.from(
       usersBox.get('selectedUserKeys'),
@@ -70,55 +67,74 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
 
     showModalBottomSheet(
       context: context,
+      isDismissible: false, // ⭐ cannot close without choosing
+      enableDrag: false,
       builder: (_) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(height: 12),
-                const Text("Select Users", style: TextStyle(fontSize: 18)),
-                const SizedBox(height: 12),
+            return Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    "Who is going?",
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
 
-                ...keys.map((key) {
-                  final user = usersBox.get(key);
-                  final isSelected = selectedKeys.contains(key);
+                  const SizedBox(height: 16),
 
-                  return ListTile(
-                    leading: CircleAvatar(
-                      child: Icon(
-                        IconData(user["avatar"], fontFamily: 'MaterialIcons'),
+                  ...keys.map((key) {
+                    final user = usersBox.get(key);
+                    final isSelected = selectedKeys.contains(key);
+
+                    return ListTile(
+                      leading: CircleAvatar(
+                        child: Icon(
+                          IconData(user["avatar"], fontFamily: 'MaterialIcons'),
+                        ),
                       ),
-                    ),
-                    title: Text(user["name"]),
-                    trailing: GestureDetector(
-                      onTap: () {
-                        if (isSelected) {
-                          selectedKeys.remove(key);
-                        } else {
-                          selectedKeys.add(key);
-                        }
+                      title: Text(user["name"]),
+                      trailing: GestureDetector(
+                        onTap: () {
+                          if (isSelected) {
+                            selectedKeys.remove(key);
+                          } else {
+                            selectedKeys.add(key);
+                          }
 
-                        if (selectedKeys.isEmpty) {
-                          selectedKeys.add('main');
-                        }
-
-                        usersBox.put('selectedUserKeys', selectedKeys);
-
-                        setSheetState(() {});
-                        setState(() {});
-                      },
-                      child: Icon(
-                        isSelected ? Icons.check_circle : Icons.circle_outlined,
-                        color: isSelected ? Colors.blue : Colors.grey,
-                        size: 26,
+                          setSheetState(() {});
+                        },
+                        child: Icon(
+                          isSelected
+                              ? Icons.check_circle
+                              : Icons.circle_outlined,
+                          color: isSelected ? Colors.blue : Colors.grey,
+                          size: 26,
+                        ),
                       ),
-                    ),
-                  );
-                }).toList(),
+                    );
+                  }).toList(),
 
-                const SizedBox(height: 12),
-              ],
+                  const SizedBox(height: 20),
+
+                  // ⭐ CONFIRM BUTTON
+                  ElevatedButton(
+                    onPressed: selectedKeys.isEmpty
+                        ? null
+                        : () {
+                            // Save selected users globally
+                            usersBox.put('selectedUserKeys', selectedKeys);
+
+                            // Save event
+                            saveEvent(selectedKeys);
+                          },
+                    child: const Text("Confirm"),
+                  ),
+
+                  const SizedBox(height: 12),
+                ],
+              ),
             );
           },
         );
@@ -142,15 +158,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
     final ticketUrl = getTicketUrl();
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(name),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.group),
-            onPressed: openUserSelector,
-          ),
-        ],
-      ),
+      appBar: AppBar(title: Text(name)),
 
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -186,7 +194,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
 
           const SizedBox(height: 30),
 
-          // ⭐ BOOK TICKETS (now works)
+          // ⭐ BOOK TICKETS
           ElevatedButton.icon(
             icon: const Icon(Icons.open_in_new),
             label: const Text("Book Tickets"),
@@ -205,11 +213,11 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
 
           const SizedBox(height: 16),
 
-          // ⭐ ADD TO SCHEDULE
+          // ⭐ ADD TO SCHEDULE (now forces user selection)
           ElevatedButton.icon(
             icon: const Icon(Icons.add),
             label: const Text("Add to My Schedule"),
-            onPressed: addToSchedule,
+            onPressed: openMandatoryUserSelector,
           ),
         ],
       ),
