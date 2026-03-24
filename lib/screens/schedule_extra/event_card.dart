@@ -21,7 +21,12 @@ class EventCard extends StatelessWidget {
     final time = event["time"] ?? "";
     final venue = event["venue"] ?? "";
     final city = event["city"] ?? "";
-    final recurrence = event["recurrence"] ?? "";
+
+    final recurrence = event["recurrence"] ?? "none";
+    final customDays = List<int>.from(event["customDays"] ?? []);
+
+    final prepMinutes = event["prepMinutes"] ?? 0;
+
     final users = List<String>.from(event["users"] ?? []);
 
     final attendeeNames = users
@@ -31,6 +36,46 @@ class EventCard extends StatelessWidget {
         })
         .where((name) => name.isNotEmpty)
         .join(", ");
+
+    // ⭐ Recurrence formatting
+    String recurrenceText = "";
+    if (recurrence == "custom") {
+      const labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+      final days = customDays.map((d) => labels[d - 1]).join(", ");
+      recurrenceText = "Repeats: $days";
+    } else if (recurrence != "none") {
+      recurrenceText =
+          "Repeats: ${recurrence[0].toUpperCase()}${recurrence.substring(1)}";
+    }
+
+    // ⭐ Alarm formatting
+    String alarmText = "";
+    if (prepMinutes > 0 && date.isNotEmpty && time.isNotEmpty) {
+      final parts = time.split(":");
+      final hour = int.tryParse(parts[0]) ?? 0;
+      final minute = int.tryParse(parts[1]) ?? 0;
+
+      final eventTime = DateTime(2000, 1, 1, hour, minute);
+      final alarmTime = eventTime.subtract(Duration(minutes: prepMinutes));
+
+      final alarmHH = alarmTime.hour.toString().padLeft(2, '0');
+      final alarmMM = alarmTime.minute.toString().padLeft(2, '0');
+
+      // Convert minutes → hours + minutes
+      final h = prepMinutes ~/ 60;
+      final m = prepMinutes % 60;
+
+      String beforeText = "";
+      if (h > 0 && m > 0) {
+        beforeText = "${h}h ${m}m before";
+      } else if (h > 0) {
+        beforeText = "${h}h before";
+      } else {
+        beforeText = "$m min before";
+      }
+
+      alarmText = "Alarm: $alarmHH:$alarmMM ($beforeText)";
+    }
 
     final card = Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -71,33 +116,40 @@ class EventCard extends StatelessWidget {
                   const SizedBox(height: 4),
 
                   // DATE + TIME
-                  Text(
-                    "$date  $time",
-                    style: const TextStyle(fontSize: 14),
-                  ),
+                  Text("$date  $time", style: const TextStyle(fontSize: 14)),
 
                   const SizedBox(height: 4),
 
-                  // VENUE + CITY (city optional)
+                  // VENUE + CITY
                   if (venue.isNotEmpty || city.isNotEmpty)
                     Text(
                       city.isNotEmpty ? "$venue — $city" : venue,
+                      style: const TextStyle(fontSize: 14, color: Colors.grey),
+                    ),
+
+                  const SizedBox(height: 4),
+
+                  // ⭐ RECURRENCE
+                  if (recurrenceText.isNotEmpty)
+                    Text(
+                      recurrenceText,
                       style: const TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey,
+                        fontSize: 13,
+                        color: Colors.blueGrey,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
 
                   const SizedBox(height: 4),
 
-                  // RECURRENCE (optional)
-                  if (recurrence.isNotEmpty)
+                  // ⭐ ALARM
+                  if (alarmText.isNotEmpty)
                     Text(
-                      "Repeats: $recurrence",
+                      alarmText,
                       style: const TextStyle(
                         fontSize: 13,
-                        color: Colors.blueGrey,
-                        fontWeight: FontWeight.w500,
+                        color: Colors.deepOrange,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
 
@@ -122,9 +174,6 @@ class EventCard extends StatelessWidget {
 
     if (onTap == null) return card;
 
-    return GestureDetector(
-      onTap: onTap,
-      child: card,
-    );
+    return GestureDetector(onTap: onTap, child: card);
   }
 }

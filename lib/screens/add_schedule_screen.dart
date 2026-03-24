@@ -12,10 +12,13 @@ class AddScheduleScreen extends StatefulWidget {
 class _AddScheduleScreenState extends State<AddScheduleScreen> {
   final titleCtrl = TextEditingController();
   final venueCtrl = TextEditingController();
-  final recurrenceCtrl = TextEditingController(); // typed recurrence
 
   DateTime? selectedDateTime;
   int prepMinutes = 0;
+
+  // ⭐ Recurrence state
+  String recurrence = "none"; // none, daily, weekly, monthly, custom
+  List<int> customDays = []; // 1=Mon ... 7=Sun
 
   List<dynamic> selectedUsers = [];
 
@@ -31,6 +34,9 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
     selectedUsers = List<dynamic>.from(usersBox.get('selectedUserKeys'));
   }
 
+  // -------------------------------------------------------------
+  // ⭐ Formatting helpers
+  // -------------------------------------------------------------
   String formatDateTime(DateTime dt) {
     const weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
     const months = [
@@ -58,6 +64,9 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
     return "${minutes ~/ 60}h ${minutes % 60}min";
   }
 
+  // -------------------------------------------------------------
+  // ⭐ Pickers
+  // -------------------------------------------------------------
   Future<int?> pickPrepTime() async {
     int temp = prepMinutes;
 
@@ -133,6 +142,137 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
     }
   }
 
+  // -------------------------------------------------------------
+  // ⭐ Recurrence popup
+  // -------------------------------------------------------------
+  void openRecurrencePicker() {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Recurrence",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // NONE
+                  ListTile(
+                    title: const Text("None"),
+                    trailing: recurrence == "none"
+                        ? const Icon(Icons.check, color: Colors.teal)
+                        : null,
+                    onTap: () {
+                      setState(() => recurrence = "none");
+                      Navigator.pop(context);
+                    },
+                  ),
+
+                  // DAILY
+                  ListTile(
+                    title: const Text("Daily"),
+                    trailing: recurrence == "daily"
+                        ? const Icon(Icons.check, color: Colors.teal)
+                        : null,
+                    onTap: () {
+                      setState(() => recurrence = "daily");
+                      Navigator.pop(context);
+                    },
+                  ),
+
+                  // WEEKLY
+                  ListTile(
+                    title: const Text("Weekly"),
+                    trailing: recurrence == "weekly"
+                        ? const Icon(Icons.check, color: Colors.teal)
+                        : null,
+                    onTap: () {
+                      setState(() => recurrence = "weekly");
+                      Navigator.pop(context);
+                    },
+                  ),
+
+                  // MONTHLY
+                  ListTile(
+                    title: const Text("Monthly"),
+                    trailing: recurrence == "monthly"
+                        ? const Icon(Icons.check, color: Colors.teal)
+                        : null,
+                    onTap: () {
+                      setState(() => recurrence = "monthly");
+                      Navigator.pop(context);
+                    },
+                  ),
+
+                  // CUSTOM
+                  ListTile(
+                    title: const Text("Custom Days"),
+                    trailing: recurrence == "custom"
+                        ? const Icon(Icons.check, color: Colors.teal)
+                        : null,
+                    onTap: () {
+                      setSheetState(() => recurrence = "custom");
+                    },
+                  ),
+
+                  if (recurrence == "custom") ...[
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      children: List.generate(7, (i) {
+                        const labels = [
+                          "Mon",
+                          "Tue",
+                          "Wed",
+                          "Thu",
+                          "Fri",
+                          "Sat",
+                          "Sun",
+                        ];
+                        final day = i + 1;
+                        final selected = customDays.contains(day);
+
+                        return ChoiceChip(
+                          label: Text(labels[i]),
+                          selected: selected,
+                          onSelected: (_) {
+                            setSheetState(() {
+                              selected
+                                  ? customDays.remove(day)
+                                  : customDays.add(day);
+                            });
+                            setState(() {});
+                          },
+                        );
+                      }),
+                    ),
+                    const SizedBox(height: 16),
+                    Center(
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text("Done"),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // -------------------------------------------------------------
+  // ⭐ Save event
+  // -------------------------------------------------------------
   void saveEvent() {
     if (titleCtrl.text.isEmpty || selectedDateTime == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -152,8 +292,9 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
 
       "users": selectedUsers,
 
-      // typed recurrence
-      "recurrence": recurrenceCtrl.text.trim(),
+      // ⭐ structured recurrence
+      "recurrence": recurrence,
+      "customDays": customDays,
 
       "prepMinutes": prepMinutes,
     };
@@ -162,6 +303,9 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
     Navigator.pop(context);
   }
 
+  // -------------------------------------------------------------
+  // ⭐ User selector
+  // -------------------------------------------------------------
   void openUserSelector() {
     showModalBottomSheet(
       context: context,
@@ -177,6 +321,9 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
     );
   }
 
+  // -------------------------------------------------------------
+  // ⭐ UI
+  // -------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -184,7 +331,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // ⭐ TITLE
+          // TITLE
           TextField(
             controller: titleCtrl,
             decoration: const InputDecoration(labelText: "Title"),
@@ -192,7 +339,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
 
           const SizedBox(height: 16),
 
-          // ⭐ LOCATION (venue)
+          // LOCATION
           TextField(
             controller: venueCtrl,
             decoration: const InputDecoration(labelText: "Location"),
@@ -200,7 +347,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
 
           const SizedBox(height: 24),
 
-          // ⭐ DATE & TIME
+          // DATE & TIME
           Text("Date & Time", style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 6),
 
@@ -215,7 +362,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
 
           const SizedBox(height: 24),
 
-          // ⭐ ALARM
+          // ALARM
           Text("Alarm", style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 6),
 
@@ -237,7 +384,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
 
           const SizedBox(height: 24),
 
-          // ⭐ USERS
+          // USERS
           Text("Users", style: Theme.of(context).textTheme.titleMedium),
           ListTile(
             title: Text("${selectedUsers.length} selected"),
@@ -247,21 +394,23 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
 
           const SizedBox(height: 24),
 
-          // ⭐ RECURRENCE (typed)
-          Text(
-            "Recurrence (type anything)",
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          TextField(
-            controller: recurrenceCtrl,
-            decoration: const InputDecoration(
-              hintText: "e.g. daily, weekly, mon,wed,fri, every 2 weeks",
+          // RECURRENCE
+          Text("Recurrence", style: Theme.of(context).textTheme.titleMedium),
+          ListTile(
+            title: Text(
+              recurrence == "none"
+                  ? "None"
+                  : recurrence == "custom"
+                  ? "Custom: ${customDays.join(",")}"
+                  : recurrence[0].toUpperCase() + recurrence.substring(1),
             ),
+            trailing: const Icon(Icons.repeat),
+            onTap: openRecurrencePicker,
           ),
 
           const SizedBox(height: 32),
 
-          // ⭐ SAVE
+          // SAVE
           ElevatedButton(onPressed: saveEvent, child: const Text("Save")),
         ],
       ),
