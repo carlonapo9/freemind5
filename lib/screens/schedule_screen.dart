@@ -1,13 +1,15 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_text.dart';
 
+import '../services/location_service.dart'; // ⭐ REQUIRED
 import 'live_events_screen.dart';
 import 'add_user_screen.dart';
 import 'manage_users_screen.dart';
 import 'schedule_event_details_screen.dart';
-import 'add_schedule_screen.dart'; // ⭐ NEW
+import 'add_schedule_screen.dart';
 import 'schedule_extra/user_selector_sheet.dart';
 import 'schedule_extra/event_card.dart';
 
@@ -21,6 +23,9 @@ class ScheduleScreen extends StatefulWidget {
 class _ScheduleScreenState extends State<ScheduleScreen> {
   late Box usersBox;
   late Box scheduleBox;
+
+  double? userLat; // ⭐ NEW
+  double? userLng; // ⭐ NEW
 
   @override
   void initState() {
@@ -36,6 +41,38 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     if (!usersBox.containsKey('selectedUserKeys')) {
       usersBox.put('selectedUserKeys', ['main']);
     }
+
+    _loadUserLocation(); // ⭐ NEW
+  }
+
+  // ⭐ Load user location for distance calculation
+  Future<void> _loadUserLocation() async {
+    try {
+      final pos = await LocationService().getCurrentPosition();
+      setState(() {
+        userLat = pos.latitude;
+        userLng = pos.longitude;
+      });
+    } catch (e) {
+      print("Location unavailable for internal events");
+    }
+  }
+
+  // ⭐ Haversine distance (miles)
+  double distanceMiles(double lat1, double lon1, double lat2, double lon2) {
+    const R = 3958.8;
+    final dLat = (lat2 - lat1) * (pi / 180);
+    final dLon = (lon2 - lon1) * (pi / 180);
+
+    final a =
+        sin(dLat / 2) * sin(dLat / 2) +
+        cos(lat1 * (pi / 180)) *
+            cos(lat2 * (pi / 180)) *
+            sin(dLon / 2) *
+            sin(dLon / 2);
+
+    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
+    return R * c;
   }
 
   DateTime parseEventDate(Map event) {
@@ -273,9 +310,25 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                   ...groupEvents.map((entry) {
                     final event = entry.value as Map;
                     final key = entry.key;
+
+                    // ⭐ CALCULATE DISTANCE (only if lat/lng exists)
+                    double? distance;
+                    if (userLat != null &&
+                        userLng != null &&
+                        event["lat"] != null &&
+                        event["lng"] != null) {
+                      distance = distanceMiles(
+                        userLat!,
+                        userLng!,
+                        event["lat"],
+                        event["lng"],
+                      );
+                    }
+
                     return EventCard(
                       event: event,
                       usersBox: usersBox,
+                      distanceMiles: distance, // ⭐ PASSED IN
                       onTap: () {
                         Navigator.push(
                           context,

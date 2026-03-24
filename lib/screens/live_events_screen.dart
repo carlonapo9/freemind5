@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../services/location_service.dart';
@@ -66,6 +67,23 @@ class _LiveEventsScreenState extends State<LiveEventsScreen> {
     final mm = dt.minute.toString().padLeft(2, '0');
 
     return "$w ${dt.day} $m – $hh:$mm";
+  }
+
+  // ⭐ Haversine (miles)
+  double distanceMiles(double lat1, double lon1, double lat2, double lon2) {
+    const R = 3958.8;
+    final dLat = (lat2 - lat1) * (pi / 180);
+    final dLon = (lon2 - lon1) * (pi / 180);
+
+    final a =
+        sin(dLat / 2) * sin(dLat / 2) +
+        cos(lat1 * (pi / 180)) *
+            cos(lat2 * (pi / 180)) *
+            sin(dLon / 2) *
+            sin(dLon / 2);
+
+    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
+    return R * c;
   }
 
   Future<void> fetchEvents() async {
@@ -144,6 +162,29 @@ class _LiveEventsScreenState extends State<LiveEventsScreen> {
                     event["_embedded"]?["venues"]?[0]?["country"]?["name"] ??
                     "";
 
+                // ⭐ Extract venue lat/lng
+                final venueLat = double.tryParse(
+                  event["_embedded"]?["venues"]?[0]?["location"]?["latitude"] ??
+                      "",
+                );
+                final venueLng = double.tryParse(
+                  event["_embedded"]?["venues"]?[0]?["location"]?["longitude"] ??
+                      "",
+                );
+
+                double? distance;
+                if (userLat != null &&
+                    userLng != null &&
+                    venueLat != null &&
+                    venueLng != null) {
+                  distance = distanceMiles(
+                    userLat!,
+                    userLng!,
+                    venueLat,
+                    venueLng,
+                  );
+                }
+
                 return GestureDetector(
                   onTap: () {
                     Navigator.push(
@@ -187,6 +228,19 @@ class _LiveEventsScreenState extends State<LiveEventsScreen> {
                           const SizedBox(height: 6),
 
                           Text(formatted, style: const TextStyle(fontSize: 14)),
+
+                          if (distance != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text(
+                                "${distance.toStringAsFixed(1)} miles away",
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.teal,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
 
                           const SizedBox(height: 6),
 

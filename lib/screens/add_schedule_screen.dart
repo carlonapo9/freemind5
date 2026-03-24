@@ -55,13 +55,18 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
     ];
 
     return "${weekdays[dt.weekday - 1]} ${dt.day} ${months[dt.month - 1]} – "
-        "${dt.hour.toString().padLeft(2, '0')}:"
-        "${dt.minute.toString().padLeft(2, '0')}";
+        "${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
   }
 
   String formatPrep(int minutes) {
     if (minutes < 60) return "$minutes minutes";
     return "${minutes ~/ 60}h ${minutes % 60}min";
+  }
+
+  // ⭐ Convert customDays numbers → labels
+  String customDaysLabel(List<int> days) {
+    const labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    return days.map((d) => labels[d - 1]).join(", ");
   }
 
   // -------------------------------------------------------------
@@ -149,122 +154,128 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
     showModalBottomSheet(
       context: context,
       builder: (_) {
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
-            return Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "Recurrence",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // NONE
-                  ListTile(
-                    title: const Text("None"),
-                    trailing: recurrence == "none"
-                        ? const Icon(Icons.check, color: Colors.teal)
-                        : null,
-                    onTap: () {
-                      setState(() => recurrence = "none");
-                      Navigator.pop(context);
-                    },
-                  ),
-
-                  // DAILY
-                  ListTile(
-                    title: const Text("Daily"),
-                    trailing: recurrence == "daily"
-                        ? const Icon(Icons.check, color: Colors.teal)
-                        : null,
-                    onTap: () {
-                      setState(() => recurrence = "daily");
-                      Navigator.pop(context);
-                    },
-                  ),
-
-                  // WEEKLY
-                  ListTile(
-                    title: const Text("Weekly"),
-                    trailing: recurrence == "weekly"
-                        ? const Icon(Icons.check, color: Colors.teal)
-                        : null,
-                    onTap: () {
-                      setState(() => recurrence = "weekly");
-                      Navigator.pop(context);
-                    },
-                  ),
-
-                  // MONTHLY
-                  ListTile(
-                    title: const Text("Monthly"),
-                    trailing: recurrence == "monthly"
-                        ? const Icon(Icons.check, color: Colors.teal)
-                        : null,
-                    onTap: () {
-                      setState(() => recurrence = "monthly");
-                      Navigator.pop(context);
-                    },
-                  ),
-
-                  // CUSTOM
-                  ListTile(
-                    title: const Text("Custom Days"),
-                    trailing: recurrence == "custom"
-                        ? const Icon(Icons.check, color: Colors.teal)
-                        : null,
-                    onTap: () {
-                      setSheetState(() => recurrence = "custom");
-                    },
-                  ),
-
-                  if (recurrence == "custom") ...[
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      children: List.generate(7, (i) {
-                        const labels = [
-                          "Mon",
-                          "Tue",
-                          "Wed",
-                          "Thu",
-                          "Fri",
-                          "Sat",
-                          "Sun",
-                        ];
-                        final day = i + 1;
-                        final selected = customDays.contains(day);
-
-                        return ChoiceChip(
-                          label: Text(labels[i]),
-                          selected: selected,
-                          onSelected: (_) {
-                            setSheetState(() {
-                              selected
-                                  ? customDays.remove(day)
-                                  : customDays.add(day);
-                            });
-                            setState(() {});
-                          },
-                        );
-                      }),
-                    ),
-                    const SizedBox(height: 16),
-                    Center(
-                      child: ElevatedButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text("Done"),
+        return SingleChildScrollView(
+          // ⭐ FIX OVERFLOW
+          child: StatefulBuilder(
+            builder: (context, setSheetState) {
+              return Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Recurrence",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
+                    const SizedBox(height: 16),
+
+                    // NONE
+                    ListTile(
+                      title: const Text("None"),
+                      trailing: recurrence == "none"
+                          ? const Icon(Icons.check, color: Colors.teal)
+                          : null,
+                      onTap: () {
+                        setState(() => recurrence = "none");
+                        Navigator.pop(context);
+                      },
+                    ),
+
+                    // DAILY
+                    ListTile(
+                      title: const Text("Daily"),
+                      trailing: recurrence == "daily"
+                          ? const Icon(Icons.check, color: Colors.teal)
+                          : null,
+                      onTap: () {
+                        setState(() => recurrence = "daily");
+                        Navigator.pop(context);
+                      },
+                    ),
+
+                    // WEEKLY
+                    ListTile(
+                      title: const Text("Weekly"),
+                      trailing: recurrence == "weekly"
+                          ? const Icon(Icons.check, color: Colors.teal)
+                          : null,
+                      onTap: () {
+                        setState(() => recurrence = "weekly");
+                        Navigator.pop(context);
+                      },
+                    ),
+
+                    // MONTHLY
+                    ListTile(
+                      title: const Text("Monthly"),
+                      trailing: recurrence == "monthly"
+                          ? const Icon(Icons.check, color: Colors.teal)
+                          : null,
+                      onTap: () {
+                        setState(() => recurrence = "monthly");
+                        Navigator.pop(context);
+                      },
+                    ),
+
+                    // CUSTOM
+                    ListTile(
+                      title: const Text("Custom Days"),
+                      trailing: recurrence == "custom"
+                          ? const Icon(Icons.check, color: Colors.teal)
+                          : null,
+                      onTap: () {
+                        setSheetState(() => recurrence = "custom");
+                      },
+                    ),
+
+                    if (recurrence == "custom") ...[
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        children: List.generate(7, (i) {
+                          const labels = [
+                            "Mon",
+                            "Tue",
+                            "Wed",
+                            "Thu",
+                            "Fri",
+                            "Sat",
+                            "Sun",
+                          ];
+                          final day = i + 1;
+                          final selected = customDays.contains(day);
+
+                          return ChoiceChip(
+                            label: Text(labels[i]),
+                            selected: selected,
+                            onSelected: (_) {
+                              setSheetState(() {
+                                selected
+                                    ? customDays.remove(day)
+                                    : customDays.add(day);
+                              });
+                              setState(() {});
+                            },
+                          );
+                        }),
+                      ),
+                      const SizedBox(height: 16),
+                      Center(
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text("Done"),
+                        ),
+                      ),
+                    ],
                   ],
-                ],
-              ),
-            );
-          },
+                ),
+              );
+            },
+          ),
         );
       },
     );
@@ -401,7 +412,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
               recurrence == "none"
                   ? "None"
                   : recurrence == "custom"
-                  ? "Custom: ${customDays.join(",")}"
+                  ? "Custom: ${customDaysLabel(customDays)}"
                   : recurrence[0].toUpperCase() + recurrence.substring(1),
             ),
             trailing: const Icon(Icons.repeat),

@@ -6,11 +6,15 @@ class EventCard extends StatelessWidget {
   final Box usersBox;
   final VoidCallback? onTap;
 
+  // ⭐ NEW: distance in miles (optional)
+  final double? distanceMiles;
+
   const EventCard({
     super.key,
     required this.event,
     required this.usersBox,
     this.onTap,
+    this.distanceMiles, // ⭐ NEW
   });
 
   // ⭐ Same formatting as AddScheduleScreen
@@ -142,6 +146,20 @@ class EventCard extends StatelessWidget {
 
                   // ⭐ FORMATTED DATE + TIME
                   Text(formattedDateTime, style: const TextStyle(fontSize: 14)),
+
+                  // ⭐ NEW: DISTANCE IN MILES
+                  if (distanceMiles != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        "${distanceMiles!.toStringAsFixed(1)} miles away",
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.teal,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
 
                   const SizedBox(height: 4),
 
