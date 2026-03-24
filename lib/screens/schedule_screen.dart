@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_text.dart';
+
 import 'live_events_screen.dart';
 import 'add_user_screen.dart';
 import 'manage_users_screen.dart';
 import 'schedule_event_details_screen.dart';
-import 'schedule_screen_extra/user_selector_sheet.dart';
-import 'schedule_screen_extra/event_card.dart';
+import 'add_schedule_screen.dart'; // ⭐ NEW
+import 'schedule_extra/user_selector_sheet.dart';
+import 'schedule_extra/event_card.dart';
 
 class ScheduleScreen extends StatefulWidget {
   const ScheduleScreen({super.key});
@@ -182,6 +184,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           ),
         ],
       ),
+
       drawer: Drawer(
         child: ListView(
           padding: EdgeInsets.zero,
@@ -215,6 +218,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           ],
         ),
       ),
+
       body: ValueListenableBuilder(
         valueListenable: scheduleBox.listenable(),
         builder: (context, box, _) {
@@ -290,6 +294,17 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             },
           );
         },
+      ),
+
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AddScheduleScreen()),
+          ).then((_) => setState(() {}));
+        },
+        backgroundColor: AppColors.primary,
+        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }

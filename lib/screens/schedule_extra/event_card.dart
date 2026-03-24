@@ -16,12 +16,13 @@ class EventCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final image = event["image"];
-    final title = event["title"];
-    final date = event["date"];
-    final time = event["time"];
-    final venue = event["venue"];
-    final city = event["city"];
-    final users = List<String>.from(event["users"]);
+    final title = event["title"] ?? "";
+    final date = event["date"] ?? "";
+    final time = event["time"] ?? "";
+    final venue = event["venue"] ?? "";
+    final city = event["city"] ?? "";
+    final recurrence = event["recurrence"] ?? "";
+    final users = List<String>.from(event["users"] ?? []);
 
     final attendeeNames = users
         .map((key) {
@@ -38,7 +39,8 @@ class EventCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (image != null)
+            // ⭐ IMAGE (optional)
+            if (image != null && image.toString().isNotEmpty)
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: Image.network(
@@ -48,11 +50,16 @@ class EventCard extends StatelessWidget {
                   fit: BoxFit.cover,
                 ),
               ),
-            const SizedBox(width: 12),
+
+            if (image != null && image.toString().isNotEmpty)
+              const SizedBox(width: 12),
+
+            // ⭐ TEXT CONTENT
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // TITLE
                   Text(
                     title,
                     style: const TextStyle(
@@ -60,14 +67,43 @@ class EventCard extends StatelessWidget {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+
                   const SizedBox(height: 4),
-                  Text("$date  $time", style: const TextStyle(fontSize: 14)),
-                  const SizedBox(height: 4),
+
+                  // DATE + TIME
                   Text(
-                    "$venue — $city",
-                    style: const TextStyle(fontSize: 14, color: Colors.grey),
+                    "$date  $time",
+                    style: const TextStyle(fontSize: 14),
                   ),
+
+                  const SizedBox(height: 4),
+
+                  // VENUE + CITY (city optional)
+                  if (venue.isNotEmpty || city.isNotEmpty)
+                    Text(
+                      city.isNotEmpty ? "$venue — $city" : venue,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey,
+                      ),
+                    ),
+
+                  const SizedBox(height: 4),
+
+                  // RECURRENCE (optional)
+                  if (recurrence.isNotEmpty)
+                    Text(
+                      "Repeats: $recurrence",
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Colors.blueGrey,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+
                   const SizedBox(height: 6),
+
+                  // USERS
                   Text(
                     "Attending: $attendeeNames",
                     style: const TextStyle(
