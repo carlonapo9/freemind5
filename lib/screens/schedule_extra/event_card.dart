@@ -13,6 +13,42 @@ class EventCard extends StatelessWidget {
     this.onTap,
   });
 
+  // ⭐ Same formatting as AddScheduleScreen
+  String formatDateTime(String date, String time) {
+    if (date.isEmpty || time.isEmpty) return "";
+
+    final parts = date.split("-");
+    final t = time.split(":");
+
+    final year = int.tryParse(parts[0]) ?? 0;
+    final month = int.tryParse(parts[1]) ?? 1;
+    final day = int.tryParse(parts[2]) ?? 1;
+
+    final hour = int.tryParse(t[0]) ?? 0;
+    final minute = int.tryParse(t[1]) ?? 0;
+
+    final dt = DateTime(year, month, day, hour, minute);
+
+    const weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const months = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
+
+    return "${weekdays[dt.weekday - 1]} ${dt.day} ${months[dt.month - 1]} – "
+        "${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
+  }
+
   @override
   Widget build(BuildContext context) {
     final image = event["image"];
@@ -25,17 +61,30 @@ class EventCard extends StatelessWidget {
     final recurrence = event["recurrence"] ?? "none";
     final customDays = List<int>.from(event["customDays"] ?? []);
 
-    final prepMinutes = event["prepMinutes"] ?? 0;
-
     final users = List<String>.from(event["users"] ?? []);
 
-    final attendeeNames = users
-        .map((key) {
-          final u = usersBox.get(key);
-          return u != null ? u["name"] : "";
-        })
-        .where((name) => name.isNotEmpty)
-        .join(", ");
+    // ⭐ USERS → avatars + names
+    final userWidgets = users.map((key) {
+      final u = usersBox.get(key);
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircleAvatar(
+            radius: 10,
+            child: Icon(
+              IconData(u["avatar"], fontFamily: 'MaterialIcons'),
+              size: 14,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            u["name"],
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+          ),
+          const SizedBox(width: 10),
+        ],
+      );
+    }).toList();
 
     // ⭐ Recurrence formatting
     String recurrenceText = "";
@@ -48,34 +97,7 @@ class EventCard extends StatelessWidget {
           "Repeats: ${recurrence[0].toUpperCase()}${recurrence.substring(1)}";
     }
 
-    // ⭐ Alarm formatting
-    String alarmText = "";
-    if (prepMinutes > 0 && date.isNotEmpty && time.isNotEmpty) {
-      final parts = time.split(":");
-      final hour = int.tryParse(parts[0]) ?? 0;
-      final minute = int.tryParse(parts[1]) ?? 0;
-
-      final eventTime = DateTime(2000, 1, 1, hour, minute);
-      final alarmTime = eventTime.subtract(Duration(minutes: prepMinutes));
-
-      final alarmHH = alarmTime.hour.toString().padLeft(2, '0');
-      final alarmMM = alarmTime.minute.toString().padLeft(2, '0');
-
-      // Convert minutes → hours + minutes
-      final h = prepMinutes ~/ 60;
-      final m = prepMinutes % 60;
-
-      String beforeText = "";
-      if (h > 0 && m > 0) {
-        beforeText = "${h}h ${m}m before";
-      } else if (h > 0) {
-        beforeText = "${h}h before";
-      } else {
-        beforeText = "$m min before";
-      }
-
-      alarmText = "Alarm: $alarmHH:$alarmMM ($beforeText)";
-    }
+    final formattedDateTime = formatDateTime(date, time);
 
     final card = Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -84,7 +106,6 @@ class EventCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ⭐ IMAGE (optional)
             if (image != null && image.toString().isNotEmpty)
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
@@ -99,11 +120,15 @@ class EventCard extends StatelessWidget {
             if (image != null && image.toString().isNotEmpty)
               const SizedBox(width: 12),
 
-            // ⭐ TEXT CONTENT
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // ⭐ USERS ON TOP
+                  Wrap(children: userWidgets),
+
+                  const SizedBox(height: 8),
+
                   // TITLE
                   Text(
                     title,
@@ -115,8 +140,8 @@ class EventCard extends StatelessWidget {
 
                   const SizedBox(height: 4),
 
-                  // DATE + TIME
-                  Text("$date  $time", style: const TextStyle(fontSize: 14)),
+                  // ⭐ FORMATTED DATE + TIME
+                  Text(formattedDateTime, style: const TextStyle(fontSize: 14)),
 
                   const SizedBox(height: 4),
 
@@ -129,7 +154,7 @@ class EventCard extends StatelessWidget {
 
                   const SizedBox(height: 4),
 
-                  // ⭐ RECURRENCE
+                  // RECURRENCE
                   if (recurrenceText.isNotEmpty)
                     Text(
                       recurrenceText,
@@ -139,31 +164,6 @@ class EventCard extends StatelessWidget {
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-
-                  const SizedBox(height: 4),
-
-                  // ⭐ ALARM
-                  if (alarmText.isNotEmpty)
-                    Text(
-                      alarmText,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: Colors.deepOrange,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-
-                  const SizedBox(height: 6),
-
-                  // USERS
-                  Text(
-                    "Attending: $attendeeNames",
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: Colors.teal,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -173,7 +173,6 @@ class EventCard extends StatelessWidget {
     );
 
     if (onTap == null) return card;
-
     return GestureDetector(onTap: onTap, child: card);
   }
 }
