@@ -4,7 +4,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_text.dart';
 
-import '../services/location_service.dart'; // ⭐ REQUIRED
+import '../services/location_service.dart';
 import 'live_events_screen.dart';
 import 'add_user_screen.dart';
 import 'manage_users_screen.dart';
@@ -24,8 +24,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   late Box usersBox;
   late Box scheduleBox;
 
-  double? userLat; // ⭐ NEW
-  double? userLng; // ⭐ NEW
+  double? userLat;
+  double? userLng;
 
   @override
   void initState() {
@@ -42,10 +42,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       usersBox.put('selectedUserKeys', ['main']);
     }
 
-    _loadUserLocation(); // ⭐ NEW
+    _loadUserLocation();
   }
 
-  // ⭐ Load user location for distance calculation
   Future<void> _loadUserLocation() async {
     try {
       final pos = await LocationService().getCurrentPosition();
@@ -58,7 +57,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     }
   }
 
-  // ⭐ Haversine distance (miles)
   double distanceMiles(double lat1, double lon1, double lat2, double lon2) {
     const R = 3958.8;
     final dLat = (lat2 - lat1) * (pi / 180);
@@ -125,9 +123,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         children: [
           CircleAvatar(
             radius: 14,
+            backgroundColor: Colors.grey.shade200,
             child: Icon(
               IconData(u["avatar"], fontFamily: 'MaterialIcons'),
               size: 18,
+              color: Colors.grey.shade800,
             ),
           ),
           const SizedBox(width: 6),
@@ -150,9 +150,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               right: i * 20,
               child: CircleAvatar(
                 radius: 14,
+                backgroundColor: Colors.grey.shade200,
                 child: Icon(
                   IconData(visible[i]["avatar"], fontFamily: 'MaterialIcons'),
                   size: 18,
+                  color: Colors.grey.shade800,
                 ),
               ),
             ),
@@ -162,7 +164,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: Colors.teal.shade200,
+                  color: Colors.teal.shade300,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -170,6 +172,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
                 ),
               ),
@@ -192,7 +195,12 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     final selectedKeys = List<String>.from(usersBox.get('selectedUserKeys'));
 
     return Scaffold(
+      backgroundColor: Colors.grey.shade100,
+
       appBar: AppBar(
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        elevation: 0,
         title: const Text('FreeMind'),
         leading: Builder(
           builder: (context) {
@@ -231,8 +239,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               child: Text('Menu', style: AppText.drawerHeader),
             ),
             ListTile(
-              leading: const Icon(Icons.person_add),
-              title: const Text('Add User'),
+              leading: Icon(Icons.person_add, color: Colors.grey.shade700),
+              title: Text(
+                'Add User',
+                style: TextStyle(color: Colors.grey.shade900),
+              ),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(
@@ -242,8 +253,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.event),
-              title: const Text('Live Events'),
+              leading: Icon(Icons.event, color: Colors.grey.shade700),
+              title: Text(
+                'Live Events',
+                style: TextStyle(color: Colors.grey.shade900),
+              ),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(
@@ -297,51 +311,66 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // ⭐ Group Header
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                    padding: const EdgeInsets.fromLTRB(16, 18, 16, 6),
                     child: Text(
                       label,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey.shade800,
                       ),
                     ),
                   ),
-                  ...groupEvents.map((entry) {
-                    final event = entry.value as Map;
-                    final key = entry.key;
 
-                    // ⭐ CALCULATE DISTANCE (only if lat/lng exists)
-                    double? distance;
-                    if (userLat != null &&
-                        userLng != null &&
-                        event["lat"] != null &&
-                        event["lng"] != null) {
-                      distance = distanceMiles(
-                        userLat!,
-                        userLng!,
-                        event["lat"],
-                        event["lng"],
-                      );
-                    }
+                  // ⭐ Group Background
+                  Container(
+                    color: Colors.white,
+                    child: Column(
+                      children: groupEvents.map((entry) {
+                        final event = entry.value as Map;
+                        final key = entry.key;
 
-                    return EventCard(
-                      event: event,
-                      usersBox: usersBox,
-                      distanceMiles: distance, // ⭐ PASSED IN
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => ScheduleEventDetailsScreen(
-                              eventKey: key,
-                              event: Map<String, dynamic>.from(event),
-                            ),
-                          ),
+                        double? distance;
+                        if (userLat != null &&
+                            userLng != null &&
+                            event["lat"] != null &&
+                            event["lng"] != null) {
+                          distance = distanceMiles(
+                            userLat!,
+                            userLng!,
+                            event["lat"],
+                            event["lng"],
+                          );
+                        }
+
+                        return EventCard(
+                          event: event,
+                          usersBox: usersBox,
+                          distanceMiles: distance,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ScheduleEventDetailsScreen(
+                                  eventKey: key,
+                                  event: Map<String, dynamic>.from(event),
+                                ),
+                              ),
+                            );
+                          },
                         );
-                      },
-                    );
-                  }).toList(),
+                      }).toList(),
+                    ),
+                  ),
+
+                  // ⭐ Divider between groups
+                  Divider(
+                    height: 28,
+                    thickness: 1,
+                    color: Colors.grey.shade300,
+                  ),
                 ],
               );
             },

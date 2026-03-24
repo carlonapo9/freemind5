@@ -101,17 +101,38 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
   void _deleteUser(String key) {
     if (key == "main") return;
 
+    // 1. Delete user from usersBox
     usersBox.delete(key);
 
+    // 2. Update selectedUserKeys
     List<String> selected = List<String>.from(usersBox.get('selectedUserKeys'));
-
     selected.remove(key);
-
-    if (selected.isEmpty) {
-      selected.add('main');
-    }
-
+    if (selected.isEmpty) selected.add('main');
     usersBox.put('selectedUserKeys', selected);
+
+    // 3. Remove user from all schedule events
+    final scheduleBox = Hive.box('schedule');
+    final events = scheduleBox.toMap();
+
+    for (final entry in events.entries) {
+      final eventKey = entry.key;
+      final event = Map<String, dynamic>.from(entry.value);
+
+      List<String> users = List<String>.from(event["users"] ?? []);
+
+      if (users.contains(key)) {
+        users.remove(key);
+
+        if (users.isEmpty) {
+          // 4. Delete event if no users left
+          scheduleBox.delete(eventKey);
+        } else {
+          // Save updated event
+          event["users"] = users;
+          scheduleBox.put(eventKey, event);
+        }
+      }
+    }
 
     setState(() {});
   }
