@@ -6,8 +6,8 @@ import 'live_events_screen.dart';
 import 'add_user_screen.dart';
 import 'manage_users_screen.dart';
 import 'schedule_event_details_screen.dart';
-import 'schedule_extra/user_selector_sheet.dart';
-import 'schedule_extra/event_card.dart';
+import 'schedule_screen_extra/user_selector_sheet.dart';
+import 'schedule_screen_extra/event_card.dart';
 
 class ScheduleScreen extends StatefulWidget {
   const ScheduleScreen({super.key});
