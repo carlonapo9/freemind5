@@ -109,6 +109,13 @@ class _ScheduleEventDetailsScreenState
         "${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
   }
 
+  // ⭐ Alarm time formatter
+  String alarmTime(String date, String time, int minutesBefore) {
+    final dt = DateTime.parse("$date $time");
+    final alarm = dt.subtract(Duration(minutes: minutesBefore));
+    return "${alarm.hour.toString().padLeft(2, '0')}:${alarm.minute.toString().padLeft(2, '0')}";
+  }
+
   List<String> attendeeNames() {
     final users = List<String>.from(widget.event["users"] ?? []);
 
@@ -161,6 +168,8 @@ class _ScheduleEventDetailsScreenState
     final city = event["city"] ?? "";
     final attendees = attendeeNames().join(", ");
 
+    final prepMinutes = event["prepMinutes"] ?? 0;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("Event Details"),
@@ -203,6 +212,26 @@ class _ScheduleEventDetailsScreenState
             ],
           ),
 
+          // ⭐ ALARM DISPLAY
+          if (prepMinutes > 0)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Row(
+                children: [
+                  const Icon(Icons.alarm, size: 18, color: Colors.deepOrange),
+                  const SizedBox(width: 6),
+                  Text(
+                    "Alarm: $prepMinutes min before (${alarmTime(date, time, prepMinutes)})",
+                    style: const TextStyle(
+                      fontSize: 15,
+                      color: Colors.deepOrange,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
           const SizedBox(height: 8),
 
           Row(
@@ -210,32 +239,27 @@ class _ScheduleEventDetailsScreenState
               const Icon(Icons.place, size: 18),
               const SizedBox(width: 6),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "$venue — $city",
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-
-                    if (distanceMilesValue != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Text(
-                          "${distanceMilesValue!.toStringAsFixed(1)} miles away",
-                          style: const TextStyle(
-                            fontSize: 15,
-                            color: Colors.teal,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                  ],
+                child: Text(
+                  "$venue — $city",
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
           ),
+
+          if (distanceMilesValue != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                "${distanceMilesValue!.toStringAsFixed(1)} miles away",
+                style: const TextStyle(
+                  fontSize: 15,
+                  color: Colors.teal,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
 
           const SizedBox(height: 12),
 

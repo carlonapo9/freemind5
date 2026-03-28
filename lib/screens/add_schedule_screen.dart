@@ -58,6 +58,7 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
         "${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
   }
 
+  // ⭐ SAME FORMATTER AS EDIT SCREEN
   String formatPrep(int minutes) {
     if (minutes < 60) return "$minutes minutes";
     return "${minutes ~/ 60}h ${minutes % 60}min";
@@ -155,7 +156,6 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
       context: context,
       builder: (_) {
         return SingleChildScrollView(
-          // ⭐ FIX OVERFLOW
           child: StatefulBuilder(
             builder: (context, setSheetState) {
               return Padding(
@@ -173,7 +173,6 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // NONE
                     ListTile(
                       title: const Text("None"),
                       trailing: recurrence == "none"
@@ -185,7 +184,6 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                       },
                     ),
 
-                    // DAILY
                     ListTile(
                       title: const Text("Daily"),
                       trailing: recurrence == "daily"
@@ -197,7 +195,6 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                       },
                     ),
 
-                    // WEEKLY
                     ListTile(
                       title: const Text("Weekly"),
                       trailing: recurrence == "weekly"
@@ -209,7 +206,6 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                       },
                     ),
 
-                    // MONTHLY
                     ListTile(
                       title: const Text("Monthly"),
                       trailing: recurrence == "monthly"
@@ -221,7 +217,6 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
                       },
                     ),
 
-                    // CUSTOM
                     ListTile(
                       title: const Text("Custom Days"),
                       trailing: recurrence == "custom"
@@ -303,7 +298,6 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
 
       "users": selectedUsers,
 
-      // ⭐ structured recurrence
       "recurrence": recurrence,
       "customDays": customDays,
 
@@ -342,7 +336,6 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // TITLE
           TextField(
             controller: titleCtrl,
             decoration: const InputDecoration(labelText: "Title"),
@@ -350,7 +343,6 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
 
           const SizedBox(height: 16),
 
-          // LOCATION
           TextField(
             controller: venueCtrl,
             decoration: const InputDecoration(labelText: "Location"),
@@ -358,7 +350,6 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
 
           const SizedBox(height: 24),
 
-          // DATE & TIME
           Text("Date & Time", style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 6),
 
@@ -373,7 +364,6 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
 
           const SizedBox(height: 24),
 
-          // ALARM
           Text("Alarm", style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 6),
 
@@ -395,7 +385,6 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
 
           const SizedBox(height: 24),
 
-          // USERS
           Text("Users", style: Theme.of(context).textTheme.titleMedium),
           ListTile(
             title: Text("${selectedUsers.length} selected"),
@@ -405,7 +394,6 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
 
           const SizedBox(height: 24),
 
-          // RECURRENCE
           Text("Recurrence", style: Theme.of(context).textTheme.titleMedium),
           ListTile(
             title: Text(
@@ -421,7 +409,6 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
 
           const SizedBox(height: 32),
 
-          // SAVE
           ElevatedButton(onPressed: saveEvent, child: const Text("Save")),
         ],
       ),

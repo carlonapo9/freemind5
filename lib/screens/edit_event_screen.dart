@@ -30,6 +30,9 @@ class _EditEventScreenState extends State<EditEventScreen> {
   String recurrence = "none";
   List<int> customDays = [];
 
+  // ⭐ ALARM
+  int prepMinutes = 0;
+
   late bool isLiveEvent;
 
   @override
@@ -38,7 +41,6 @@ class _EditEventScreenState extends State<EditEventScreen> {
     scheduleBox = Hive.box('schedule');
     usersBox = Hive.box('users');
 
-    // Detect live event
     isLiveEvent = widget.event["image"] != null || widget.event["city"] != null;
 
     titleController = TextEditingController(text: widget.event["title"] ?? "");
@@ -48,6 +50,9 @@ class _EditEventScreenState extends State<EditEventScreen> {
 
     recurrence = widget.event["recurrence"] ?? "none";
     customDays = List<int>.from(widget.event["customDays"] ?? []);
+
+    // ⭐ LOAD ALARM
+    prepMinutes = widget.event["prepMinutes"] ?? 0;
 
     selectedUserKeys = List<String>.from(widget.event["users"] ?? ['main']);
   }
@@ -80,6 +85,11 @@ class _EditEventScreenState extends State<EditEventScreen> {
   // -------------------------------------------------------------
   // Recurrence popup
   // -------------------------------------------------------------
+  String weekdayLabel(int d) {
+    const labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    return labels[d - 1];
+  }
+
   void openRecurrencePicker() {
     showModalBottomSheet(
       context: context,
@@ -157,20 +167,11 @@ class _EditEventScreenState extends State<EditEventScreen> {
                     Wrap(
                       spacing: 8,
                       children: List.generate(7, (i) {
-                        const labels = [
-                          "Mon",
-                          "Tue",
-                          "Wed",
-                          "Thu",
-                          "Fri",
-                          "Sat",
-                          "Sun",
-                        ];
                         final day = i + 1;
                         final selected = customDays.contains(day);
 
                         return ChoiceChip(
-                          label: Text(labels[i]),
+                          label: Text(weekdayLabel(day)),
                           selected: selected,
                           onSelected: (_) {
                             setSheetState(() {
@@ -201,16 +202,67 @@ class _EditEventScreenState extends State<EditEventScreen> {
   }
 
   // -------------------------------------------------------------
+  // ⭐ ALARM PICKER
+  // -------------------------------------------------------------
+  String formatPrep(int minutes) {
+    if (minutes < 60) return "$minutes minutes";
+    return "${minutes ~/ 60}h ${minutes % 60}min";
+  }
+
+  Future<void> pickAlarm() async {
+    int temp = prepMinutes;
+
+    final result = await showDialog<int>(
+      context: context,
+      builder: (_) {
+        return AlertDialog(
+          title: const Text("Alarm Time"),
+          content: StatefulBuilder(
+            builder: (context, setStateDialog) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Slider(
+                    min: 0,
+                    max: 300,
+                    divisions: 300,
+                    value: temp.toDouble(),
+                    label: formatPrep(temp),
+                    onChanged: (v) => setStateDialog(() => temp = v.toInt()),
+                  ),
+                  Text("Alarm: ${formatPrep(temp)} before"),
+                ],
+              );
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, null),
+              child: const Text("Cancel"),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, temp),
+              child: const Text("Save"),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (result != null) {
+      setState(() => prepMinutes = result);
+    }
+  }
+
+  // -------------------------------------------------------------
   // Save event
   // -------------------------------------------------------------
   void save() async {
     final updated = Map<String, dynamic>.from(widget.event);
 
     if (isLiveEvent) {
-      // Only attendees editable
       updated["users"] = selectedUserKeys;
     } else {
-      // Full editing allowed
       updated["title"] = titleController.text.trim();
       updated["date"] = dateController.text.trim();
       updated["time"] = timeController.text.trim();
@@ -219,15 +271,12 @@ class _EditEventScreenState extends State<EditEventScreen> {
       updated["recurrence"] = recurrence;
       updated["customDays"] = customDays;
 
+      updated["prepMinutes"] = prepMinutes;
+
       updated["users"] = selectedUserKeys;
     }
 
     await scheduleBox.put(widget.eventKey, updated);
-    if (mounted) Navigator.pop(context);
-  }
-
-  void deleteEvent() async {
-    await scheduleBox.delete(widget.eventKey);
     if (mounted) Navigator.pop(context);
   }
 
@@ -243,15 +292,11 @@ class _EditEventScreenState extends State<EditEventScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Edit Event"),
-        actions: [
-          IconButton(icon: const Icon(Icons.check), onPressed: save),
-          IconButton(icon: const Icon(Icons.delete), onPressed: deleteEvent),
-        ],
+        actions: [IconButton(icon: const Icon(Icons.check), onPressed: save)],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // TITLE
           TextField(
             controller: titleController,
             enabled: !isLiveEvent,
@@ -259,7 +304,6 @@ class _EditEventScreenState extends State<EditEventScreen> {
           ),
           const SizedBox(height: 12),
 
-          // DATE
           TextField(
             controller: dateController,
             enabled: !isLiveEvent,
@@ -267,7 +311,6 @@ class _EditEventScreenState extends State<EditEventScreen> {
           ),
           const SizedBox(height: 12),
 
-          // TIME
           TextField(
             controller: timeController,
             enabled: !isLiveEvent,
@@ -275,7 +318,6 @@ class _EditEventScreenState extends State<EditEventScreen> {
           ),
           const SizedBox(height: 12),
 
-          // VENUE
           TextField(
             controller: venueController,
             enabled: !isLiveEvent,
@@ -283,7 +325,22 @@ class _EditEventScreenState extends State<EditEventScreen> {
           ),
           const SizedBox(height: 12),
 
-          // RECURRENCE (manual schedules only)
+          // ⭐ ALARM
+          if (!isLiveEvent) ...[
+            Text("Alarm", style: Theme.of(context).textTheme.titleMedium),
+            ListTile(
+              title: Text(
+                prepMinutes == 0
+                    ? "No alarm"
+                    : "${formatPrep(prepMinutes)} before",
+              ),
+              trailing: const Icon(Icons.alarm),
+              onTap: pickAlarm,
+            ),
+            const SizedBox(height: 20),
+          ],
+
+          // ⭐ RECURRENCE
           if (!isLiveEvent) ...[
             Text("Recurrence", style: Theme.of(context).textTheme.titleMedium),
             ListTile(
@@ -291,7 +348,7 @@ class _EditEventScreenState extends State<EditEventScreen> {
                 recurrence == "none"
                     ? "None"
                     : recurrence == "custom"
-                    ? "Custom: ${customDays.join(",")}"
+                    ? "Custom: ${customDays.map(weekdayLabel).join(", ")}"
                     : recurrence[0].toUpperCase() + recurrence.substring(1),
               ),
               trailing: const Icon(Icons.repeat),
@@ -300,7 +357,6 @@ class _EditEventScreenState extends State<EditEventScreen> {
             const SizedBox(height: 20),
           ],
 
-          // ATTENDEES
           const Text(
             "Attendees",
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),

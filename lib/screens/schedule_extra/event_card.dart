@@ -6,7 +6,7 @@ class EventCard extends StatelessWidget {
   final Box usersBox;
   final VoidCallback? onTap;
 
-  // ⭐ NEW: distance in miles (optional)
+  // ⭐ distance in miles (optional)
   final double? distanceMiles;
 
   const EventCard({
@@ -14,7 +14,7 @@ class EventCard extends StatelessWidget {
     required this.event,
     required this.usersBox,
     this.onTap,
-    this.distanceMiles, // ⭐ NEW
+    this.distanceMiles,
   });
 
   // ⭐ Same formatting as AddScheduleScreen
@@ -53,6 +53,13 @@ class EventCard extends StatelessWidget {
         "${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
   }
 
+  // ⭐ Alarm time formatter
+  String alarmTime(String date, String time, int minutesBefore) {
+    final dt = DateTime.parse("$date $time");
+    final alarm = dt.subtract(Duration(minutes: minutesBefore));
+    return "${alarm.hour.toString().padLeft(2, '0')}:${alarm.minute.toString().padLeft(2, '0')}";
+  }
+
   @override
   Widget build(BuildContext context) {
     final image = event["image"];
@@ -64,6 +71,8 @@ class EventCard extends StatelessWidget {
 
     final recurrence = event["recurrence"] ?? "none";
     final customDays = List<int>.from(event["customDays"] ?? []);
+
+    final prepMinutes = event["prepMinutes"] ?? 0;
 
     final users = List<String>.from(event["users"] ?? []);
 
@@ -128,12 +137,10 @@ class EventCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ⭐ USERS ON TOP
                   Wrap(children: userWidgets),
 
                   const SizedBox(height: 8),
 
-                  // TITLE
                   Text(
                     title,
                     style: const TextStyle(
@@ -144,10 +151,8 @@ class EventCard extends StatelessWidget {
 
                   const SizedBox(height: 4),
 
-                  // ⭐ FORMATTED DATE + TIME
                   Text(formattedDateTime, style: const TextStyle(fontSize: 14)),
 
-                  // ⭐ NEW: DISTANCE IN MILES
                   if (distanceMiles != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
@@ -163,7 +168,6 @@ class EventCard extends StatelessWidget {
 
                   const SizedBox(height: 4),
 
-                  // VENUE + CITY
                   if (venue.isNotEmpty || city.isNotEmpty)
                     Text(
                       city.isNotEmpty ? "$venue — $city" : venue,
@@ -172,7 +176,6 @@ class EventCard extends StatelessWidget {
 
                   const SizedBox(height: 4),
 
-                  // RECURRENCE
                   if (recurrenceText.isNotEmpty)
                     Text(
                       recurrenceText,
@@ -180,6 +183,20 @@ class EventCard extends StatelessWidget {
                         fontSize: 13,
                         color: Colors.blueGrey,
                         fontWeight: FontWeight.w500,
+                      ),
+                    ),
+
+                  // ⭐ ALARM DISPLAY
+                  if (prepMinutes > 0)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        "Alarm: $prepMinutes min before (${alarmTime(date, time, prepMinutes)})",
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Colors.deepOrange,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                 ],
