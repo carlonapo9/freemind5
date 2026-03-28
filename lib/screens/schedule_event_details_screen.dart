@@ -36,7 +36,17 @@ class _ScheduleEventDetailsScreenState
     _loadLocationAndDistance();
   }
 
-  // ⭐ Load user location + compute distance
+  // ⭐ Clean location builder (NO DASH unless both exist)
+  String buildLocation(String venue, String city) {
+    venue = venue.trim();
+    city = city.trim();
+
+    if (venue.isEmpty && city.isEmpty) return "";
+    if (venue.isEmpty) return city;
+    if (city.isEmpty) return venue;
+    return "$venue — $city";
+  }
+
   Future<void> _loadLocationAndDistance() async {
     try {
       final pos = await LocationService().getCurrentPosition();
@@ -56,7 +66,6 @@ class _ScheduleEventDetailsScreenState
     }
   }
 
-  // ⭐ Haversine (miles)
   double _distanceMiles(double lat1, double lon1, double lat2, double lon2) {
     const R = 3958.8;
     final dLat = (lat2 - lat1) * (pi / 180);
@@ -73,7 +82,6 @@ class _ScheduleEventDetailsScreenState
     return R * c;
   }
 
-  // ⭐ FORMAT DATE LIKE EventCard + AddScheduleScreen
   String formatDateTime(String date, String time) {
     if (date.isEmpty || time.isEmpty) return "";
 
@@ -105,11 +113,16 @@ class _ScheduleEventDetailsScreenState
       "Dec",
     ];
 
-    return "${weekdays[dt.weekday - 1]} ${dt.day} ${months[dt.month - 1]} – "
+    return "${weekdays[dt.weekday - 1]} ${dt.day} ${months[dt.month - 1]} • "
         "${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
   }
 
-  // ⭐ Alarm time formatter
+  String formatPrep(int minutes) {
+    if (minutes == 0) return "No alarm";
+    if (minutes < 60) return "$minutes minutes";
+    return "${minutes ~/ 60}h ${minutes % 60}min";
+  }
+
   String alarmTime(String date, String time, int minutesBefore) {
     final dt = DateTime.parse("$date $time");
     final alarm = dt.subtract(Duration(minutes: minutesBefore));
@@ -167,8 +180,23 @@ class _ScheduleEventDetailsScreenState
     final venue = event["venue"] ?? "";
     final city = event["city"] ?? "";
     final attendees = attendeeNames().join(", ");
-
     final prepMinutes = event["prepMinutes"] ?? 0;
+
+    final recurrence = event["recurrence"] ?? "none";
+    final customDays = List<int>.from(event["customDays"] ?? []);
+
+    String recurrenceText = "";
+    if (recurrence == "custom") {
+      const labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+      final days = customDays.map((d) => labels[d - 1]).join(", ");
+      recurrenceText = "Repeats: $days";
+    } else if (recurrence != "none") {
+      recurrenceText =
+          "Repeats: ${recurrence[0].toUpperCase()}${recurrence.substring(1)}";
+    }
+
+    final alarmLabel = formatPrep(prepMinutes);
+    final locationText = buildLocation(venue, city);
 
     return Scaffold(
       appBar: AppBar(
@@ -200,7 +228,6 @@ class _ScheduleEventDetailsScreenState
 
           const SizedBox(height: 8),
 
-          // ⭐ FORMATTED DATE + TIME
           Row(
             children: [
               const Icon(Icons.calendar_today, size: 18),
@@ -212,7 +239,6 @@ class _ScheduleEventDetailsScreenState
             ],
           ),
 
-          // ⭐ ALARM DISPLAY
           if (prepMinutes > 0)
             Padding(
               padding: const EdgeInsets.only(top: 8),
@@ -221,7 +247,7 @@ class _ScheduleEventDetailsScreenState
                   const Icon(Icons.alarm, size: 18, color: Colors.deepOrange),
                   const SizedBox(width: 6),
                   Text(
-                    "Alarm: $prepMinutes min before (${alarmTime(date, time, prepMinutes)})",
+                    "Alarm: $alarmLabel before (${alarmTime(date, time, prepMinutes)})",
                     style: const TextStyle(
                       fontSize: 15,
                       color: Colors.deepOrange,
@@ -234,31 +260,58 @@ class _ScheduleEventDetailsScreenState
 
           const SizedBox(height: 8),
 
-          Row(
-            children: [
-              const Icon(Icons.place, size: 18),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  "$venue — $city",
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
+          // ⭐ FIXED: Only show icon + row if location or distance exists
+          if (locationText.isNotEmpty || distanceMilesValue != null)
+            Row(
+              children: [
+                if (locationText.isNotEmpty) const Icon(Icons.place, size: 18),
 
-          if (distanceMilesValue != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text(
-                "${distanceMilesValue!.toStringAsFixed(1)} miles away",
-                style: const TextStyle(
-                  fontSize: 15,
-                  color: Colors.teal,
-                  fontWeight: FontWeight.w600,
+                if (locationText.isNotEmpty) const SizedBox(width: 6),
+
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (locationText.isNotEmpty)
+                        Text(
+                          locationText,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+
+                      if (distanceMilesValue != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            "${distanceMilesValue!.toStringAsFixed(1)} miles away",
+                            style: const TextStyle(
+                              fontSize: 15,
+                              color: Colors.teal,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
-              ),
+              ],
+            ),
+
+          const SizedBox(height: 12),
+
+          if (recurrenceText.isNotEmpty)
+            Row(
+              children: [
+                const Icon(Icons.repeat, size: 18),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    recurrenceText,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
             ),
 
           const SizedBox(height: 12),

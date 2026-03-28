@@ -27,6 +27,21 @@ class _LiveEventsScreenState extends State<LiveEventsScreen> {
     fetchEvents();
   }
 
+  // ⭐ Clean location builder
+  String buildLocation(String venue, String city, String country) {
+    venue = venue.trim();
+    city = city.trim();
+    country = country.trim();
+
+    final parts = [
+      if (venue.isNotEmpty) venue,
+      if (city.isNotEmpty) city,
+      if (country.isNotEmpty) country,
+    ];
+
+    return parts.join(", ");
+  }
+
   // ⭐ SAME DATE FORMAT AS INTERNAL EVENTS
   String formatDateTime(String? date, String? time) {
     if (date == null || time == null) return "";
@@ -60,13 +75,8 @@ class _LiveEventsScreenState extends State<LiveEventsScreen> {
       "Dec",
     ];
 
-    final w = weekdays[dt.weekday - 1];
-    final m = months[dt.month - 1];
-
-    final hh = dt.hour.toString().padLeft(2, '0');
-    final mm = dt.minute.toString().padLeft(2, '0');
-
-    return "$w ${dt.day} $m – $hh:$mm";
+    return "${weekdays[dt.weekday - 1]} ${dt.day} ${months[dt.month - 1]} – "
+        "${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
   }
 
   // ⭐ Haversine (miles)
@@ -185,6 +195,8 @@ class _LiveEventsScreenState extends State<LiveEventsScreen> {
                   );
                 }
 
+                final locationText = buildLocation(venue, city, country);
+
                 return GestureDetector(
                   onTap: () {
                     Navigator.push(
@@ -244,13 +256,14 @@ class _LiveEventsScreenState extends State<LiveEventsScreen> {
 
                           const SizedBox(height: 6),
 
-                          Text(
-                            "$venue — $city, $country",
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey,
+                          if (locationText.isNotEmpty)
+                            Text(
+                              locationText,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey,
+                              ),
                             ),
-                          ),
                         ],
                       ),
                     ),

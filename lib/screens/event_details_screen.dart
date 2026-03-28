@@ -29,6 +29,21 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
     _loadLocationAndDistance();
   }
 
+  // ⭐ Clean location builder
+  String buildLocation(String venue, String city, String country) {
+    venue = venue.trim();
+    city = city.trim();
+    country = country.trim();
+
+    final parts = [
+      if (venue.isNotEmpty) venue,
+      if (city.isNotEmpty) city,
+      if (country.isNotEmpty) country,
+    ];
+
+    return parts.join(", ");
+  }
+
   // ⭐ Load user location + compute distance
   Future<void> _loadLocationAndDistance() async {
     try {
@@ -100,13 +115,8 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
       "Dec",
     ];
 
-    final w = weekdays[dt.weekday - 1];
-    final m = months[dt.month - 1];
-
-    final hh = dt.hour.toString().padLeft(2, '0');
-    final mm = dt.minute.toString().padLeft(2, '0');
-
-    return "$w ${dt.day} $m – $hh:$mm";
+    return "${weekdays[dt.weekday - 1]} ${dt.day} ${months[dt.month - 1]} – "
+        "${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
   }
 
   // ⭐ Ticket URL
@@ -123,7 +133,6 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
     final city = event["_embedded"]?["venues"]?[0]?["city"]?["name"] ?? "";
     final image = event["images"]?[0]?["url"];
 
-    // ⭐ GET LAT/LNG FROM TICKETMASTER
     final venueData = event["_embedded"]?["venues"]?[0];
     final vLat = double.tryParse(venueData?["location"]?["latitude"] ?? "");
     final vLng = double.tryParse(venueData?["location"]?["longitude"] ?? "");
@@ -138,8 +147,6 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
       "users": selectedKeys,
       "source": "ticketmaster",
       "createdAt": DateTime.now().toString(),
-
-      // ⭐ ADD THESE TWO
       "lat": vLat,
       "lng": vLng,
     };
@@ -248,6 +255,8 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
 
     final ticketUrl = getTicketUrl();
 
+    final locationText = buildLocation(venue, city, country);
+
     return Scaffold(
       appBar: AppBar(title: Text(name)),
 
@@ -291,10 +300,11 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
 
           const SizedBox(height: 10),
 
-          Text(
-            "$venue — $city, $country",
-            style: const TextStyle(fontSize: 16, color: Colors.grey),
-          ),
+          if (locationText.isNotEmpty)
+            Text(
+              locationText,
+              style: const TextStyle(fontSize: 16, color: Colors.grey),
+            ),
 
           const SizedBox(height: 30),
 

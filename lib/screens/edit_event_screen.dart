@@ -17,22 +17,19 @@ class EditEventScreen extends StatefulWidget {
 
 class _EditEventScreenState extends State<EditEventScreen> {
   late TextEditingController titleController;
+  late TextEditingController venueController;
   late TextEditingController dateController;
   late TextEditingController timeController;
-  late TextEditingController venueController;
 
   late Box scheduleBox;
   late Box usersBox;
 
   List<String> selectedUserKeys = [];
 
-  // Recurrence
   String recurrence = "none";
   List<int> customDays = [];
 
-  // ⭐ ALARM
   int prepMinutes = 0;
-
   late bool isLiveEvent;
 
   @override
@@ -44,14 +41,12 @@ class _EditEventScreenState extends State<EditEventScreen> {
     isLiveEvent = widget.event["image"] != null || widget.event["city"] != null;
 
     titleController = TextEditingController(text: widget.event["title"] ?? "");
+    venueController = TextEditingController(text: widget.event["venue"] ?? "");
     dateController = TextEditingController(text: widget.event["date"] ?? "");
     timeController = TextEditingController(text: widget.event["time"] ?? "");
-    venueController = TextEditingController(text: widget.event["venue"] ?? "");
 
     recurrence = widget.event["recurrence"] ?? "none";
     customDays = List<int>.from(widget.event["customDays"] ?? []);
-
-    // ⭐ LOAD ALARM
     prepMinutes = widget.event["prepMinutes"] ?? 0;
 
     selectedUserKeys = List<String>.from(widget.event["users"] ?? ['main']);
@@ -60,15 +55,23 @@ class _EditEventScreenState extends State<EditEventScreen> {
   @override
   void dispose() {
     titleController.dispose();
+    venueController.dispose();
     dateController.dispose();
     timeController.dispose();
-    venueController.dispose();
     super.dispose();
   }
 
-  // -------------------------------------------------------------
-  // Toggle attendees
-  // -------------------------------------------------------------
+  String formatPrep(int minutes) {
+    if (minutes == 0) return "No alarm";
+    if (minutes < 60) return "$minutes minutes";
+    return "${minutes ~/ 60}h ${minutes % 60}min";
+  }
+
+  String weekdayLabel(int d) {
+    const labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    return labels[d - 1];
+  }
+
   void toggleUser(String key) {
     setState(() {
       if (selectedUserKeys.contains(key)) {
@@ -82,131 +85,47 @@ class _EditEventScreenState extends State<EditEventScreen> {
     });
   }
 
-  // -------------------------------------------------------------
-  // Recurrence popup
-  // -------------------------------------------------------------
-  String weekdayLabel(int d) {
-    const labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-    return labels[d - 1];
-  }
+  Future<void> pickDateTime() async {
+    final now = DateTime.now();
+    DateTime initial = now;
 
-  void openRecurrencePicker() {
-    showModalBottomSheet(
-      context: context,
-      builder: (_) {
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
-            return Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "Recurrence",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 16),
-
-                  ListTile(
-                    title: const Text("None"),
-                    trailing: recurrence == "none"
-                        ? const Icon(Icons.check, color: Colors.teal)
-                        : null,
-                    onTap: () {
-                      setState(() => recurrence = "none");
-                      Navigator.pop(context);
-                    },
-                  ),
-
-                  ListTile(
-                    title: const Text("Daily"),
-                    trailing: recurrence == "daily"
-                        ? const Icon(Icons.check, color: Colors.teal)
-                        : null,
-                    onTap: () {
-                      setState(() => recurrence = "daily");
-                      Navigator.pop(context);
-                    },
-                  ),
-
-                  ListTile(
-                    title: const Text("Weekly"),
-                    trailing: recurrence == "weekly"
-                        ? const Icon(Icons.check, color: Colors.teal)
-                        : null,
-                    onTap: () {
-                      setState(() => recurrence = "weekly");
-                      Navigator.pop(context);
-                    },
-                  ),
-
-                  ListTile(
-                    title: const Text("Monthly"),
-                    trailing: recurrence == "monthly"
-                        ? const Icon(Icons.check, color: Colors.teal)
-                        : null,
-                    onTap: () {
-                      setState(() => recurrence = "monthly");
-                      Navigator.pop(context);
-                    },
-                  ),
-
-                  ListTile(
-                    title: const Text("Custom Days"),
-                    trailing: recurrence == "custom"
-                        ? const Icon(Icons.check, color: Colors.teal)
-                        : null,
-                    onTap: () {
-                      setSheetState(() => recurrence = "custom");
-                    },
-                  ),
-
-                  if (recurrence == "custom") ...[
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      children: List.generate(7, (i) {
-                        final day = i + 1;
-                        final selected = customDays.contains(day);
-
-                        return ChoiceChip(
-                          label: Text(weekdayLabel(day)),
-                          selected: selected,
-                          onSelected: (_) {
-                            setSheetState(() {
-                              selected
-                                  ? customDays.remove(day)
-                                  : customDays.add(day);
-                            });
-                            setState(() {});
-                          },
-                        );
-                      }),
-                    ),
-                    const SizedBox(height: 16),
-                    Center(
-                      child: ElevatedButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text("Done"),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            );
-          },
+    if (dateController.text.isNotEmpty && timeController.text.isNotEmpty) {
+      try {
+        initial = DateTime.parse(
+          "${dateController.text} ${timeController.text}",
         );
-      },
-    );
-  }
+      } catch (_) {}
+    }
 
-  // -------------------------------------------------------------
-  // ⭐ ALARM PICKER
-  // -------------------------------------------------------------
-  String formatPrep(int minutes) {
-    if (minutes < 60) return "$minutes minutes";
-    return "${minutes ~/ 60}h ${minutes % 60}min";
+    final pickedDate = await showDatePicker(
+      context: context,
+      firstDate: now,
+      lastDate: DateTime(now.year + 2),
+      initialDate: initial,
+    );
+
+    if (pickedDate != null) {
+      final pickedTime = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.fromDateTime(initial),
+      );
+
+      if (pickedTime != null) {
+        final dt = DateTime(
+          pickedDate.year,
+          pickedDate.month,
+          pickedDate.day,
+          pickedTime.hour,
+          pickedTime.minute,
+        );
+        setState(() {
+          dateController.text =
+              "${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}";
+          timeController.text =
+              "${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
+        });
+      }
+    }
   }
 
   Future<void> pickAlarm() async {
@@ -254,9 +173,6 @@ class _EditEventScreenState extends State<EditEventScreen> {
     }
   }
 
-  // -------------------------------------------------------------
-  // Save event
-  // -------------------------------------------------------------
   void save() async {
     final updated = Map<String, dynamic>.from(widget.event);
 
@@ -264,15 +180,12 @@ class _EditEventScreenState extends State<EditEventScreen> {
       updated["users"] = selectedUserKeys;
     } else {
       updated["title"] = titleController.text.trim();
+      updated["venue"] = venueController.text.trim();
       updated["date"] = dateController.text.trim();
       updated["time"] = timeController.text.trim();
-      updated["venue"] = venueController.text.trim();
-
       updated["recurrence"] = recurrence;
       updated["customDays"] = customDays;
-
       updated["prepMinutes"] = prepMinutes;
-
       updated["users"] = selectedUserKeys;
     }
 
@@ -280,9 +193,6 @@ class _EditEventScreenState extends State<EditEventScreen> {
     if (mounted) Navigator.pop(context);
   }
 
-  // -------------------------------------------------------------
-  // UI
-  // -------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
     final userKeys = usersBox.keys
@@ -297,66 +207,93 @@ class _EditEventScreenState extends State<EditEventScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          TextField(
-            controller: titleController,
-            enabled: !isLiveEvent,
-            decoration: const InputDecoration(labelText: "Title"),
-          ),
-          const SizedBox(height: 12),
-
-          TextField(
-            controller: dateController,
-            enabled: !isLiveEvent,
-            decoration: const InputDecoration(labelText: "Date (YYYY-MM-DD)"),
-          ),
-          const SizedBox(height: 12),
-
-          TextField(
-            controller: timeController,
-            enabled: !isLiveEvent,
-            decoration: const InputDecoration(labelText: "Time (HH:MM)"),
-          ),
-          const SizedBox(height: 12),
-
-          TextField(
-            controller: venueController,
-            enabled: !isLiveEvent,
-            decoration: const InputDecoration(labelText: "Venue"),
-          ),
-          const SizedBox(height: 12),
-
-          // ⭐ ALARM
-          if (!isLiveEvent) ...[
-            Text("Alarm", style: Theme.of(context).textTheme.titleMedium),
-            ListTile(
-              title: Text(
-                prepMinutes == 0
-                    ? "No alarm"
-                    : "${formatPrep(prepMinutes)} before",
+          // ⭐ Title + Location
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  TextField(
+                    controller: titleController,
+                    enabled: !isLiveEvent,
+                    decoration: const InputDecoration(labelText: "Title"),
+                    onChanged: (_) => setState(() {}),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: venueController,
+                    enabled: !isLiveEvent,
+                    decoration: const InputDecoration(labelText: "Location"),
+                  ),
+                ],
               ),
-              trailing: const Icon(Icons.alarm),
-              onTap: pickAlarm,
             ),
-            const SizedBox(height: 20),
-          ],
+          ),
 
-          // ⭐ RECURRENCE
-          if (!isLiveEvent) ...[
-            Text("Recurrence", style: Theme.of(context).textTheme.titleMedium),
-            ListTile(
+          const SizedBox(height: 20),
+
+          // ⭐ Date & Time
+          Card(
+            child: ListTile(
+              enabled: !isLiveEvent,
+              leading: const Icon(Icons.calendar_today),
               title: Text(
-                recurrence == "none"
-                    ? "None"
-                    : recurrence == "custom"
-                    ? "Custom: ${customDays.map(weekdayLabel).join(", ")}"
-                    : recurrence[0].toUpperCase() + recurrence.substring(1),
+                dateController.text.isEmpty || timeController.text.isEmpty
+                    ? "Select Date & Time"
+                    : "${dateController.text} • ${timeController.text}",
               ),
-              trailing: const Icon(Icons.repeat),
-              onTap: openRecurrencePicker,
+              onTap: isLiveEvent ? null : pickDateTime,
             ),
-            const SizedBox(height: 20),
-          ],
+          ),
 
+          const SizedBox(height: 20),
+
+          // ⭐ Alarm
+          if (!isLiveEvent)
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.alarm),
+                title: Text(formatPrep(prepMinutes)),
+                onTap: pickAlarm,
+              ),
+            ),
+
+          if (!isLiveEvent) const SizedBox(height: 20),
+
+          // ⭐ Recurrence
+          if (!isLiveEvent)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text("Repeat", style: TextStyle(fontSize: 16)),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        _recurrenceChip("None", "none"),
+                        _recurrenceChip("Daily", "daily"),
+                        _recurrenceChip("Weekly", "weekly"),
+                        _recurrenceChip("Monthly", "monthly"),
+                        _recurrenceChip("Custom", "custom"),
+                      ],
+                    ),
+
+                    // ⭐ FIXED: Only CUSTOM shows weekday chips
+                    if (recurrence == "custom") ...[
+                      const SizedBox(height: 12),
+                      _weekdayChips(),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+
+          if (!isLiveEvent) const SizedBox(height: 20),
+
+          // ⭐ Attendees
           const Text(
             "Attendees",
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -387,6 +324,36 @@ class _EditEventScreenState extends State<EditEventScreen> {
           ElevatedButton(onPressed: save, child: const Text("Save Changes")),
         ],
       ),
+    );
+  }
+
+  Widget _recurrenceChip(String label, String value) {
+    return ChoiceChip(
+      label: Text(label),
+      selected: recurrence == value,
+      onSelected: (_) => setState(() => recurrence = value),
+    );
+  }
+
+  Widget _weekdayChips() {
+    const labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+    return Wrap(
+      spacing: 8,
+      children: List.generate(7, (i) {
+        final day = i + 1;
+        final selected = customDays.contains(day);
+
+        return ChoiceChip(
+          label: Text(labels[i]),
+          selected: selected,
+          onSelected: (_) {
+            setState(() {
+              selected ? customDays.remove(day) : customDays.add(day);
+            });
+          },
+        );
+      }),
     );
   }
 }

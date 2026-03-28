@@ -5,8 +5,6 @@ class EventCard extends StatelessWidget {
   final Map event;
   final Box usersBox;
   final VoidCallback? onTap;
-
-  // ⭐ distance in miles (optional)
   final double? distanceMiles;
 
   const EventCard({
@@ -17,7 +15,77 @@ class EventCard extends StatelessWidget {
     this.distanceMiles,
   });
 
-  // ⭐ Same formatting as AddScheduleScreen
+  // ⭐ Clean location builder
+  String buildLocation(String venue, String city) {
+    venue = venue.trim();
+    city = city.trim();
+
+    if (venue.isEmpty && city.isEmpty) return "";
+    if (venue.isEmpty) return city;
+    if (city.isEmpty) return venue;
+    return "$venue — $city";
+  }
+
+  // ⭐ Time until event starts
+  String timeUntil(String date, String time) {
+    if (date.isEmpty || time.isEmpty) return "";
+
+    try {
+      final eventTime = DateTime.parse("$date $time");
+      final now = DateTime.now();
+      Duration diff = eventTime.difference(now);
+
+      // ⭐ Past event
+      if (diff.isNegative) {
+        diff = diff.abs();
+        if (diff.inMinutes < 60) return "Started ${diff.inMinutes} min ago";
+        if (diff.inHours < 24) {
+          final h = diff.inHours;
+          final m = diff.inMinutes % 60;
+          return m == 0 ? "Started $h h ago" : "Started $h h $m min ago";
+        }
+        final d = diff.inDays;
+        return "Started $d day${d == 1 ? '' : 's'} ago";
+      }
+
+      // ⭐ Future event
+      final totalMinutes = diff.inMinutes;
+      final totalHours = diff.inHours;
+      final totalDays = diff.inDays;
+
+      // Minutes only
+      if (totalMinutes < 60) return "Starts in $totalMinutes min";
+
+      // Hours + minutes
+      if (totalHours < 24) {
+        final h = totalHours;
+        final m = totalMinutes % 60;
+        return m == 0 ? "Starts in $h h" : "Starts in $h h $m min";
+      }
+
+      // Days + hours
+      if (totalDays < 30) {
+        final d = totalDays;
+        final h = totalHours % 24;
+        return h == 0
+            ? "Starts in $d day${d == 1 ? '' : 's'}"
+            : "Starts in $d day${d == 1 ? '' : 's'} $h h";
+      }
+
+      // Months + days
+      final months = totalDays ~/ 30;
+      final days = totalDays % 30;
+
+      if (days == 0) {
+        return "Starts in $months month${months == 1 ? '' : 's'}";
+      }
+
+      return "Starts in $months month${months == 1 ? '' : 's'} $days day${days == 1 ? '' : 's'}";
+    } catch (_) {
+      return "";
+    }
+  }
+
   String formatDateTime(String date, String time) {
     if (date.isEmpty || time.isEmpty) return "";
 
@@ -49,15 +117,14 @@ class EventCard extends StatelessWidget {
       "Dec",
     ];
 
-    return "${weekdays[dt.weekday - 1]} ${dt.day} ${months[dt.month - 1]} – "
+    return "${weekdays[dt.weekday - 1]} ${dt.day} ${months[dt.month - 1]} • "
         "${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
   }
 
-  // ⭐ Alarm time formatter
-  String alarmTime(String date, String time, int minutesBefore) {
-    final dt = DateTime.parse("$date $time");
-    final alarm = dt.subtract(Duration(minutes: minutesBefore));
-    return "${alarm.hour.toString().padLeft(2, '0')}:${alarm.minute.toString().padLeft(2, '0')}";
+  String formatPrep(int minutes) {
+    if (minutes == 0) return "No alarm";
+    if (minutes < 60) return "$minutes minutes";
+    return "${minutes ~/ 60}h ${minutes % 60}min";
   }
 
   @override
@@ -71,14 +138,13 @@ class EventCard extends StatelessWidget {
 
     final recurrence = event["recurrence"] ?? "none";
     final customDays = List<int>.from(event["customDays"] ?? []);
-
     final prepMinutes = event["prepMinutes"] ?? 0;
 
     final users = List<String>.from(event["users"] ?? []);
 
-    // ⭐ USERS → avatars + names
     final userWidgets = users.map((key) {
       final u = usersBox.get(key);
+      if (u == null) return const SizedBox.shrink();
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -99,7 +165,6 @@ class EventCard extends StatelessWidget {
       );
     }).toList();
 
-    // ⭐ Recurrence formatting
     String recurrenceText = "";
     if (recurrence == "custom") {
       const labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -111,9 +176,13 @@ class EventCard extends StatelessWidget {
     }
 
     final formattedDateTime = formatDateTime(date, time);
+    final alarmText = formatPrep(prepMinutes);
+    final locationText = buildLocation(venue, city);
+    final untilText = timeUntil(date, time);
 
     final card = Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Row(
@@ -153,6 +222,32 @@ class EventCard extends StatelessWidget {
 
                   Text(formattedDateTime, style: const TextStyle(fontSize: 14)),
 
+                  if (untilText.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        untilText,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Colors.blueGrey,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+
+                  if (prepMinutes > 0)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        "Alarm: $alarmText before",
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Colors.deepOrange,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+
                   if (distanceMiles != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
@@ -168,9 +263,9 @@ class EventCard extends StatelessWidget {
 
                   const SizedBox(height: 4),
 
-                  if (venue.isNotEmpty || city.isNotEmpty)
+                  if (locationText.isNotEmpty)
                     Text(
-                      city.isNotEmpty ? "$venue — $city" : venue,
+                      locationText,
                       style: const TextStyle(fontSize: 14, color: Colors.grey),
                     ),
 
@@ -183,20 +278,6 @@ class EventCard extends StatelessWidget {
                         fontSize: 13,
                         color: Colors.blueGrey,
                         fontWeight: FontWeight.w500,
-                      ),
-                    ),
-
-                  // ⭐ ALARM DISPLAY
-                  if (prepMinutes > 0)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Text(
-                        "Alarm: $prepMinutes min before (${alarmTime(date, time, prepMinutes)})",
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Colors.deepOrange,
-                          fontWeight: FontWeight.w600,
-                        ),
                       ),
                     ),
                 ],
