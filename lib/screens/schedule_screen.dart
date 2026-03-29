@@ -311,15 +311,22 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ⭐ Group Header
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 18, 16, 6),
+                  // ⭐ Full-width Day Section Header (stands out strongly)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 12,
+                      horizontal: 16,
+                    ),
+                    color:
+                        Colors.teal.shade50, // Soft but noticeable background
                     child: Text(
                       label,
                       style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey.shade800,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.teal.shade800,
+                        letterSpacing: 0.3,
                       ),
                     ),
                   ),
